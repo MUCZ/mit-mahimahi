@@ -21,6 +21,7 @@
 using namespace std;
 using namespace PollerShortNames;
 
+// * ctor
 template <class FerryQueueType>
 PacketShell<FerryQueueType>::PacketShell( const std::string & device_prefix, char ** const user_environment )
     : user_environment_( user_environment ),
@@ -60,7 +61,10 @@ void PacketShell<FerryQueueType>::start_uplink( const string & shell_prefix,
     */
 
     /* Fork */
+    //！ 这里发生clone
+                                                // name       child_procedure
     event_loop_.add_special_child_process( 77, "packetshell", [&]() {
+            // ! 等于一根网线
             TunDevice ingress_tun( "ingress", ingress_addr(), egress_addr() );
 
             /* bring up localhost */
@@ -77,6 +81,7 @@ void PacketShell<FerryQueueType>::start_uplink( const string & shell_prefix,
 
             SystemCall( "ioctl SIOCADDRT", ioctl( UDPSocket().fd_num(), SIOCADDRT, &route ) );
 
+            // ! uplink 的进程拥有一个tun设备和一个ferry（event loop）
             Ferry inner_ferry;
 
             /* dnsmasq doesn't distinguish between UDP and TCP forwarding nameservers,
@@ -88,13 +93,17 @@ void PacketShell<FerryQueueType>::start_uplink( const string & shell_prefix,
             TCPSocket dns_tcp_listener;
             dns_tcp_listener.bind( dns_udp_listener.local_address() );
 
-            DNSProxy dns_inside_ { move( dns_udp_listener ), move( dns_tcp_listener ),
+            DNSProxy dns_inside_ {
+                    move( dns_udp_listener ), 
+                    move( dns_tcp_listener ),
                     dns_outside_.udp_listener().local_address(),
-                    dns_outside_.tcp_listener().local_address() };
+                    dns_outside_.tcp_listener().local_address() 
+                    };
 
             dns_inside_.register_handlers( inner_ferry );
 
             /* run dnsmasq as local caching nameserver */
+            // ? what is this
             inner_ferry.add_child_process( start_dnsmasq( {
                         "-S", dns_inside_.udp_listener().local_address().str( "#" ) } ) );
 
@@ -111,6 +120,7 @@ void PacketShell<FerryQueueType>::start_uplink( const string & shell_prefix,
 
             inner_ferry.add_child_process( join( command ), [&]() {
                     /* tweak bash prompt */
+                    // * 在原有的shell prefix前加上「link」、「loss」等字样
                     prepend_shell_prefix( shell_prefix );
 
                     return ezexec( command, true );
@@ -122,6 +132,7 @@ void PacketShell<FerryQueueType>::start_uplink( const string & shell_prefix,
             FerryQueueType uplink_queue { ferry_maker() };
             return inner_ferry.loop( uplink_queue, ingress_tun, egress_tun_ );
         }, true );  /* new network namespace */
+        //* ⬆️ new_namespace
 }
 
 template <class FerryQueueType>
@@ -161,8 +172,11 @@ void PacketShell<FerryQueueType>::start_downlink( Targs&&... Fargs )
 template <class FerryQueueType>
 int PacketShell<FerryQueueType>::wait_for_exit( void )
 {
+    // ! 这里是PacketShell的eventloop, 不是Ferry
     return event_loop_.loop();
 }
+
+// --------------
 
 template <class FerryQueueType>
 int PacketShell<FerryQueueType>::Ferry::loop( FerryQueueType & ferry_queue,

@@ -75,6 +75,7 @@ int main( int argc, char *argv[] )
         char ** const user_environment = environ;
         environ = nullptr;
 
+        // * some check : args, fd, sudo, ip_forward,
         check_requirements( argc, argv );
 
         if ( argc < 3 ) {
@@ -109,6 +110,8 @@ int main( int argc, char *argv[] )
         string uplink_queue_type = "infinite", downlink_queue_type = "infinite",
                uplink_queue_args, downlink_queue_args;
 
+
+        // * parse args to varibles
         while ( true ) {
             const int opt = getopt_long( argc, argv, "u:d:", command_line_options, nullptr );
             if ( opt == -1 ) { /* end of options */
@@ -179,8 +182,11 @@ int main( int argc, char *argv[] )
             }
         }
 
+        // * init
+        //                                   device_prefix  
         PacketShell<LinkQueue> link_shell_app( "link", user_environment );
 
+        // * register
         link_shell_app.start_uplink( "[link] ", command,
                                      "Uplink", uplink_filename, uplink_logfile, repeat, meter_uplink, meter_uplink_delay,
                                      get_packet_queue( uplink_queue_type, uplink_queue_args, argv[ 0 ] ),
@@ -190,6 +196,7 @@ int main( int argc, char *argv[] )
                                        get_packet_queue( downlink_queue_type, downlink_queue_args, argv[ 0 ] ),
                                        command_line );
 
+        // * begin event loop
         return link_shell_app.wait_for_exit();
     } catch ( const exception & e ) {
         print_exception( e );

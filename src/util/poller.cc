@@ -36,13 +36,14 @@ Poller::Result Poller::poll( const int & timeout_ms )
         }
     }
 
-    /* Quit if no member in pollfds_ has a non-zero direction */
+    /* Quit if no member in pollfds_ has a non-zero direction */ // -> 也就是没有fd可以poll的时候
     if ( not accumulate( pollfds_.begin(), pollfds_.end(), false,
                          [] ( bool acc, pollfd x ) { return acc or x.events; } ) ) {
         return Result::Type::Exit;
     }
 
     if ( 0 == SystemCall( "poll", ::poll( &pollfds_[ 0 ], pollfds_.size(), timeout_ms ) ) ) {
+        // 返回timeout
         return Result::Type::Timeout;
     }
 
@@ -56,14 +57,18 @@ Poller::Result Poller::poll( const int & timeout_ms )
             /* we only want to call callback if revents includes
                the event we asked for */
             const auto count_before = actions_.at( i ).service_count();
+            // * 回调
             auto result = actions_.at( i ).callback();
 
+            // * 根据poller回调返回值
             switch ( result.result ) {
             case ResultType::Exit:
+                // 退出poller
                 return Result( Result::Type::Exit, result.exit_status );
             case ResultType::Cancel:
+                // 停止关注这个action
                 actions_.at( i ).active = false;
-                break;
+                break; // 避免fall through
             case ResultType::Continue:
                 break;
             }

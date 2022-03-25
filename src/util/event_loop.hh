@@ -17,12 +17,14 @@ class EventLoop
 private:
     SignalMask signals_;
     Poller poller_;
+    // ? 子进程？ 干什么用的
     std::vector<std::pair<int, ChildProcess>> child_processes_;
     PollerShortNames::Result handle_signal( const signalfd_siginfo & sig );
 
 protected:
     void add_action( Poller::Action action ) { poller_.add_action( action ); }
 
+    // *  参数：返回wait_time的函数
     int internal_loop( const std::function<int(void)> & wait_time );
 
 public:
@@ -33,6 +35,7 @@ public:
     template <typename... Targs>
     void add_child_process( Targs&&... Fargs )
     {
+        // ? what is -1 ?
         child_processes_.emplace_back( -1,
                                        ChildProcess( std::forward<Targs>( Fargs )... ) );
     }
@@ -45,6 +48,7 @@ public:
         child_processes_.emplace_back( continue_status, ChildProcess( std::forward<Targs>( Fargs )... ) );
     }
 
+    //*                                       // 永远不超时
     int loop( void ) { return internal_loop( [] () { return -1; } ); } /* no timeout */
 
     virtual ~EventLoop() {}

@@ -54,6 +54,7 @@ SignalFD::SignalFD( const SignalMask & signals )
 }
 
 /* read one signal */
+// 读取这个信号，好让poller不再被触发   
 signalfd_siginfo SignalFD::read_signal( void )
 {
     signalfd_siginfo delivered_signal;

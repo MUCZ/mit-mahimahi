@@ -20,9 +20,15 @@ using namespace std;
 int do_clone( const bool new_namespace )
 {
     /* Verify that process is single-threaded before forking */
+    // 多线程的程序不应该fork
     {
         struct stat my_stat;
         SystemCall( "stat", stat( "/proc/self/task", &my_stat ) );
+        
+        // * see 
+        // https://stackoverflow.com/questions/4125898/linux-detect-at-runtime-that-a-process-have-multiple-threads/4126213#4126213
+        // https://unix.stackexchange.com/questions/101515/why-does-a-new-directory-have-a-hard-link-count-of-2-before-anything-is-added-to
+        // In Linux, everything is a file
 
         if ( my_stat.st_nlink != 3 ) {
             throw runtime_error( "ChildProcess constructed in multi-threaded program" );

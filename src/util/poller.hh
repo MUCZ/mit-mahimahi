@@ -14,6 +14,7 @@
 class Poller
 {
 public:
+    // fd + Callback + direction + when interested
     struct Action
     {
         struct Result
@@ -23,7 +24,7 @@ public:
             Result( const Type & s_result = Type::Continue, const unsigned int & s_status = EXIT_SUCCESS )
                 : result( s_result ), exit_status( s_status ) {}
         };
-
+        // * 回调必须满足这个规则
         typedef std::function<Result(void)> CallbackType;
 
         FileDescriptor & fd;
@@ -32,6 +33,7 @@ public:
         std::function<bool(void)> when_interested;
         bool active;
 
+        // * ctor
         Action( FileDescriptor & s_fd,
                 const PollDirection & s_direction,
                 const CallbackType & s_callback,
@@ -39,6 +41,8 @@ public:
             : fd( s_fd ), direction( s_direction ), callback( s_callback ),
               when_interested( s_when_interested ), active( true ) {}
 
+        // * read or write count
+        // * to allow log && shaping
         unsigned int service_count( void ) const;
     };
 
